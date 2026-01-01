@@ -1,0 +1,383 @@
+import Phaser from "phaser";
+
+export default class Player {
+  constructor(scene) {
+    this.scene = scene;
+
+    // feel
+    this.coyoteTimeMs = 120;
+    this.coyoteTimer = 0;
+    this.jumpVelocity = -650;
+    this.jumpCutMultiplier = 0.45;
+    this.wasOnGround = false;
+
+    this.sprite = null;
+
+    this.maxHp = 6; // 6 = 3 cœurs (demi-cœurs)
+    this.hp = this.maxHp;
+
+    this.invincible = false;
+    this.invincibleMs = 700;
+
+    this.hitStunMs = 180;
+    this.hitStunTimer = 0;
+
+    this.knockbackX = 260;
+    this.knockbackY = 220;
+
+    this.shieldHeld = false;
+    this.parryActive = false;
+    this.parryTimer = 0;
+    this.parryWindowMs = 160;
+    this.perfectParryMs = 90; // fenêtre parfaite (ms)
+    this.perfectParryTimer = 0; // timer interne
+    this.shieldCooldownMs = 250;
+    this.shieldCooldown = 0;
+    this.shieldFx = null;
+
+    this.facingDir = 1; // 1 = droite, -1 = gauche
+
+    // ----------------------------
+    // Attaque épée (mêlée)
+    // ----------------------------
+    this.attackActive = false;
+    this.attackTimer = 0;
+    this.attackActiveMs = 90; // durée où la hitbox touche
+    this.attackCooldownMs = 280; // délai entre attaques
+    this.attackCooldown = 0;
+
+    this.attackId = 0; // id de swing pour éviter multi-hit
+
+    this.swordHitbox = null; // hitbox physique
+    this.swordFx = null; // visuel simple
+  }
+
+  create(x, y) {
+    // anim walk (si pas déjà créée)
+    if (!this.scene.anims.exists("walk")) {
+      this.scene.anims.create({
+        key: "walk",
+        frames: this.scene.anims.generateFrameNumbers("player", {
+          start: 0,
+          end: 3,
+        }),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
+
+    const p = this.scene.physics.add.sprite(x, y, "player", 1);
+    p.setCollideWorldBounds(true);
+    p.setDragX(1400);
+    p.setMaxVelocity(260, 2000);
+
+    // Effet bouclier (rectangle simple)
+    this.shieldFx = this.scene.add.rectangle(p.x, p.y, 34, 34, 0x7ad7ff, 0.25);
+    this.shieldFx.setVisible(false);
+
+    this.sprite = p;
+
+    // --- hitbox épée (ZONE invisible) ---
+    this.swordHitbox = this.scene.add.zone(p.x, p.y, 42, 26);
+    this.scene.physics.add.existing(this.swordHitbox);
+
+    const hb = this.swordHitbox.body;
+    hb.setAllowGravity(false);
+    hb.setImmovable(true);
+    hb.moves = false; // on la téléporte à la main
+    hb.enable = false; // désactivée par défaut
+
+    // --- debug visuel (facultatif) ---
+    this.swordDebug = this.scene.add.rectangle(
+      p.x,
+      p.y,
+      42,
+      26,
+      0x00ffff,
+      0.15
+    );
+    this.swordDebug.setDepth(999);
+    this.swordDebug.setVisible(false);
+
+    this.scene.physics.add.existing(this.swordHitbox, false);
+
+    this.swordHitbox.body.setAllowGravity(false);
+    this.swordHitbox.body.immovable = true;
+    this.swordHitbox.body.enable = false;
+
+    // (optionnel) visuel "slash" simple (rectangle cyan transparent)
+    this.swordFx = this.scene.add.rectangle(p.x, p.y, 46, 30, 0x7ad7ff, 0.0);
+    this.swordFx.setDepth(999);
+
+    return p;
+  }
+
+  get onGround() {
+    const b = this.sprite.body;
+    return b.blocked.down || b.touching.down;
+  }
+
+  spawnDust() {
+    const puff = this.scene.add.circle(
+      this.sprite.x,
+      this.sprite.y + 28,
+      10,
+      0xffffff,
+      0.55
+    );
+    puff.setDepth(999);
+    this.scene.tweens.add({
+      targets: puff,
+      alpha: 0,
+      scale: 2.2,
+      duration: 160,
+      onComplete: () => puff.destroy(),
+    });
+  }
+
+  update(input, delta, finished, keyShield, keyAttack) {
+    if (finished) return;
+
+    if (this.hitStunTimer > 0) {
+      this.hitStunTimer = Math.max(0, this.hitStunTimer - delta);
+      return;
+    }
+
+    const accel = 1100;
+
+    // ----------------------------
+    // Cooldowns
+    // ----------------------------
+    this.shieldCooldown = Math.max(0, this.shieldCooldown - delta);
+    this.attackCooldown = Math.max(0, this.attackCooldown - delta);
+
+    // ----------------------------
+    // Bouclier / Parry
+    // ----------------------------
+    this.shieldHeld = !!keyShield?.isDown;
+
+    if (keyShield && Phaser.Input.Keyboard.JustDown(keyShield)) {
+      console.log("SHIELD!");
+
+      if (this.shieldCooldown <= 0) {
+        this.parryActive = true;
+        this.parryTimer = this.parryWindowMs;
+        this.perfectParryTimer = this.perfectParryMs;
+        this.shieldCooldown = this.shieldCooldownMs;
+
+        if (this.shieldFx) {
+          this.shieldFx.setVisible(true);
+          this.shieldFx.setScale(1);
+          this.scene.tweens.add({
+            targets: this.shieldFx,
+            scale: 1.25,
+            duration: 70,
+            yoyo: true,
+          });
+        }
+      }
+    }
+
+    if (this.parryActive) {
+      this.parryTimer -= delta;
+      this.perfectParryTimer = Math.max(0, this.perfectParryTimer - delta);
+
+      if (this.parryTimer <= 0) {
+        this.parryActive = false;
+        this.perfectParryTimer = 0;
+      }
+    }
+
+    // ----------------------------
+    // Attaque épée (J)
+    // ----------------------------
+    if (keyAttack && Phaser.Input.Keyboard.JustDown(keyAttack)) {
+      console.log("ATTACK!");
+
+      if (this.attackCooldown <= 0 && !this.attackActive) {
+        this.attackActive = true;
+        this.attackTimer = this.attackActiveMs;
+        this.attackCooldown = this.attackCooldownMs;
+        this.attackId += 1;
+
+        if (this.swordFx) {
+          this.swordFx.setAlpha(0.6);
+          this.swordFx.setScale(1);
+          this.scene.tweens.add({
+            targets: this.swordFx,
+            alpha: 0,
+            scale: 1.35,
+            duration: 120,
+          });
+        }
+      }
+    }
+
+    if (this.attackActive) {
+      this.attackTimer -= delta;
+      if (this.attackTimer <= 0) this.attackActive = false;
+    }
+
+    // ----------------------------
+    // Déplacement horizontal + facing
+    // ----------------------------
+    if (input.left.isDown) {
+      this.facingDir = -1;
+      this.sprite.setAccelerationX(-accel);
+      this.sprite.setFlipX(true);
+    } else if (input.right.isDown) {
+      this.facingDir = 1;
+      this.sprite.setAccelerationX(accel);
+      this.sprite.setFlipX(false);
+    } else {
+      this.sprite.setAccelerationX(0);
+    }
+
+    const onGroundNow = this.onGround;
+
+    // coyote
+    if (onGroundNow) this.coyoteTimer = this.coyoteTimeMs;
+    else this.coyoteTimer = Math.max(0, this.coyoteTimer - delta);
+
+    // jump
+    const canJump = onGroundNow || this.coyoteTimer > 0;
+    if (Phaser.Input.Keyboard.JustDown(input.space) && canJump) {
+      this.sprite.setVelocityY(this.jumpVelocity);
+      this.coyoteTimer = 0;
+    }
+
+    // jump cut
+    if (
+      Phaser.Input.Keyboard.JustUp(input.space) &&
+      this.sprite.body.velocity.y < 0
+    ) {
+      this.sprite.setVelocityY(
+        this.sprite.body.velocity.y * this.jumpCutMultiplier
+      );
+    }
+
+    // landing dust
+    if (!this.wasOnGround && onGroundNow) this.spawnDust();
+    this.wasOnGround = onGroundNow;
+
+    // ----------------------------
+    // Visuel bouclier
+    // ----------------------------
+    if (this.shieldFx && this.sprite) {
+      const sx = this.sprite.x + this.facingDir * 26;
+      const sy = this.sprite.y - 6;
+
+      this.shieldFx.x = sx;
+      this.shieldFx.y = sy;
+
+      const visible = this.shieldHeld || this.parryActive;
+      this.shieldFx.setVisible(visible);
+
+      if (this.isPerfectParryActive()) this.shieldFx.fillAlpha = 0.75;
+      else this.shieldFx.fillAlpha = this.parryActive ? 0.45 : 0.22;
+    }
+
+    if (this.swordHitbox && this.sprite) {
+      const dir = this.facingDir;
+
+      const hx = this.sprite.x + dir * 34;
+      const hy = this.sprite.y - 6;
+
+      this.swordHitbox.setPosition(hx, hy);
+
+      const hb = this.swordHitbox.body;
+      if (hb) {
+        hb.enable = this.attackActive;
+        hb.updateFromGameObject();
+      }
+
+      // debug
+      if (this.swordDebug) {
+        this.swordDebug.setPosition(hx, hy);
+        this.swordDebug.setVisible(this.attackActive);
+      }
+    }
+
+    // ----------------------------
+    // Anim
+    // ----------------------------
+    if (!onGroundNow) {
+      this.sprite.anims.stop();
+      if (this.sprite.body.velocity.y < 0) this.sprite.setFrame(0);
+      else this.sprite.setFrame(2);
+    } else {
+      const moving = Math.abs(this.sprite.body.velocity.x) > 10;
+      if (moving) this.sprite.anims.play("walk", true);
+      else {
+        this.sprite.anims.stop();
+        this.sprite.setFrame(1);
+      }
+    }
+  }
+
+  freeze() {
+    this.sprite.setAccelerationX(0);
+    this.sprite.setVelocity(0, 0);
+    this.sprite.anims.stop();
+    this.sprite.setFrame(1);
+  }
+
+  applyDamage(sourceX, amount = 1) {
+    if (this.invincible) return false;
+
+    this.hp = Math.max(0, this.hp - amount);
+
+    // Knockback (pousse loin de la source)
+    const dir = this.sprite.x < sourceX ? -1 : 1; // source à droite => pousser gauche
+    this.sprite.setVelocityX(dir * this.knockbackX);
+    this.sprite.setVelocityY(-this.knockbackY);
+
+    // Hitstun (bloque le contrôle un court instant)
+    this.hitStunTimer = this.hitStunMs;
+
+    // I-frames + clignotement
+    this.invincible = true;
+
+    this.scene.tweens.add({
+      targets: this.sprite,
+      alpha: 0.25,
+      duration: 80,
+      yoyo: true,
+      repeat: Math.floor(this.invincibleMs / 160),
+      onComplete: () => {
+        this.sprite.alpha = 1;
+      },
+    });
+
+    this.scene.time.delayedCall(this.invincibleMs, () => {
+      this.invincible = false;
+      this.sprite.alpha = 1;
+    });
+
+    return true; // dégâts appliqués
+  }
+
+  isShieldHeld() {
+    return this.shieldHeld;
+  }
+
+  isParryActive() {
+    return this.parryActive;
+  }
+
+  isPerfectParryActive() {
+    return this.parryActive && this.perfectParryTimer > 0;
+  }
+
+  getFacingDir() {
+    return this.facingDir;
+  }
+
+  getSwordHitbox() {
+    return this.swordHitbox;
+  }
+
+  getAttackId() {
+    return this.attackId;
+  }
+}

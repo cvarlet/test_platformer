@@ -1,0 +1,129 @@
+{
+    "world": {
+        "width": 6000,
+        "height": 500
+    },
+    "playerStart": {
+        "x": 200,
+        "y": 200
+    },
+    "ground": {
+        "y": 440,
+        "height": 60
+    },
+    "platforms": [
+        {
+            "x": 520,
+            "y": 380,
+            "w": 220,
+            "h": 22
+        },
+        {
+            "x": 900,
+            "y": 340,
+            "w": 240,
+            "h": 22
+        },
+        {
+            "x": 1280,
+            "y": 300,
+            "w": 260,
+            "h": 22
+        },
+        {
+            "x": 1650,
+            "y": 260,
+            "w": 240,
+            "h": 22
+        },
+        {
+            "x": 2050,
+            "y": 230,
+            "w": 280,
+            "h": 22
+        }
+    ],
+    "coins": [
+        {
+            "x": 520,
+            "y": 350
+        },
+        {
+            "x": 900,
+            "y": 310
+        },
+        {
+            "x": 1280,
+            "y": 270
+        },
+        {
+            "x": 1650,
+            "y": 230
+        },
+        {
+            "x": 2050,
+            "y": 200
+        },
+        {
+            "x": 1100,
+            "y": 410
+        },
+        {
+            "x": 1500,
+            "y": 410
+        }
+    ],
+    "finish": {
+        "poleX": 5780
+    },
+    "enemies": [
+        {
+            "type": "patrol",
+            "x": 1450,
+            "y": 410,
+            "w": 36,
+            "h": 46,
+            "minX": 1320,
+            "maxX": 1650,
+            "speed": 95,
+            "damage": 1,
+            "chaseRange": 320,
+            "giveUpRange": 420,
+            "chaseSpeed": 140,
+            "attackRange": 62,
+            "attackWindupMs": 160,
+            "attackActiveMs": 120,
+            "attackCooldownMs": 700,
+            "attackHitbox": {
+                "w": 44,
+                "h": 34,
+                "offsetX": 34,
+                "offsetY": 4
+            }
+        },
+        {
+            "type": "patrol",
+            "x": 1450,
+            "y": 410,
+            "w": 36,
+            "h": 46,
+            "minX": 1320,
+            "maxX": 1650,
+            "speed": 95,
+            "damage": 1,
+            "chaseRange": 320,
+            "giveUpRange": 420,
+            "chaseSpeed": 140,
+            "attackRange": 62,
+            "attackWindupMs": 160,
+            "attackActiveMs": 120,
+            "attackCooldownMs": 700,
+            "attackHitbox": {
+                "w": 44,
+                "h": 34,
+                "offsetX": 34,
+                "offsetY": 4
+            }
+        }
+    ]
+}
