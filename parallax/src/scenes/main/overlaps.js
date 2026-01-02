@@ -1,6 +1,17 @@
 // src/scenes/main/overlaps.js
 import { renderHearts, setScoreText } from "./ui";
 
+function destroyPlayerProjectile(a, b) {
+  // On veut détruire l'objet qui est un projectile joueur
+  const proj = a?._team === "player" ? a : b?._team === "player" ? b : null;
+  if (!proj) return;
+
+  // sécurité anti double-destroy
+  if (!proj.active) return;
+
+  proj.destroy();
+}
+
 export function setupOverlaps(scene, playerSprite) {
   // --- Sword -> Enemies ---
   const swordHb = scene.playerCtl.getSwordHitbox();
@@ -42,6 +53,61 @@ export function setupOverlaps(scene, playerSprite) {
       setScoreText(scene, scene.score);
     }
   });
+
+  // --- Player projectiles -> Enemies ---
+  if (scene.playerProjectiles) {
+    scene.physics.add.overlap(
+      scene.playerProjectiles,
+      scene.level.enemies,
+      (proj, enemy) => {
+        if (scene.finished) return;
+
+        // sécurité : ignore si projectile pas joueur
+        if (proj._team !== "player") return;
+
+        const dmg = proj._damage ?? 1;
+
+        // détruire le projectile à l'impact
+        proj.destroy();
+
+        // appliquer dégâts
+        enemy._hp = (enemy._hp ?? 1) - dmg;
+
+        // feedback visuel
+        enemy.fillColor = 0xffffff;
+        scene.tweens.add({
+          targets: enemy,
+          alpha: 0.3,
+          duration: 60,
+          yoyo: true,
+          onComplete: () => (enemy.alpha = 1),
+        });
+
+        // mort ?
+        if (enemy._hp <= 0) {
+          if (enemy._hitbox) enemy._hitbox.destroy(); // patrol
+          enemy.destroy();
+
+          scene.score += 1;
+          setScoreText(scene, scene.score);
+          scene.cameras.main.shake(70, 0.004);
+        } else {
+          // petit stun optionnel
+          enemy._stunTimer = 200;
+          enemy._state = "stun";
+        }
+      }
+    );
+  }
+
+  if (scene.playerProjectiles) {
+    // --- projectiles -> sol
+    scene.physics.add.collider(
+      scene.playerProjectiles,
+      scene.level.groundCollider,
+      (a, b) => destroyPlayerProjectile(a, b)
+    );
+  }
 
   // --- Player -> Enemy melee hitboxes ---
   const enemyHitboxes = scene.level.getEnemyHitboxes();
