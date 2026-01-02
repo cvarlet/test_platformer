@@ -22,7 +22,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.finished = false;
 
-    this.lookAheadX = 140; // combien la caméra regarde devant
+    this.lookAheadX = 45; // combien la caméra regarde devant
     this.lookAheadLerp = 0.008; // douceur du décalage (0.05–0.15)
     this.lookAheadCurrent = 0; // interne
 
@@ -335,10 +335,10 @@ export default class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(playerSprite, true, 0.15, 0.15);
 
     // Zone "morte" : le joueur peut bouger dans une zone avant que la caméra suive
-    this.cameras.main.setDeadzone(420, worldH);
+    this.cameras.main.setDeadzone(0, worldH);
 
     // Optionnel : place le joueur un peu plus vers la gauche (pour voir plus devant)
-    this.cameras.main.setFollowOffset(-120, 0);
+    this.cameras.main.setFollowOffset(-0, 0);
 
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -548,6 +548,6 @@ export default class MainScene extends Phaser.Scene {
       (target - this.lookAheadCurrent) * this.lookAheadLerp;
 
     // applique le décalage
-    this.cameras.main.setFollowOffset(-120 + this.lookAheadCurrent, 0);
+    this.cameras.main.setFollowOffset(-120, 0);
   }
 }
