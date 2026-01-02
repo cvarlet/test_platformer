@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { updateCombat } from "./Player/combat";
 import { updateMovement } from "./Player/movement";
+import { applyDamage as applyDamageImpl } from "./Player/health";
 
 export default class Player {
   constructor(scene) {
@@ -164,38 +165,7 @@ export default class Player {
   }
 
   applyDamage(sourceX, amount = 1) {
-    if (this.invincible) return false;
-
-    this.hp = Math.max(0, this.hp - amount);
-
-    // Knockback (pousse loin de la source)
-    const dir = this.sprite.x < sourceX ? -1 : 1; // source à droite => pousser gauche
-    this.sprite.setVelocityX(dir * this.knockbackX);
-    this.sprite.setVelocityY(-this.knockbackY);
-
-    // Hitstun (bloque le contrôle un court instant)
-    this.hitStunTimer = this.hitStunMs;
-
-    // I-frames + clignotement
-    this.invincible = true;
-
-    this.scene.tweens.add({
-      targets: this.sprite,
-      alpha: 0.25,
-      duration: 80,
-      yoyo: true,
-      repeat: Math.floor(this.invincibleMs / 160),
-      onComplete: () => {
-        this.sprite.alpha = 1;
-      },
-    });
-
-    this.scene.time.delayedCall(this.invincibleMs, () => {
-      this.invincible = false;
-      this.sprite.alpha = 1;
-    });
-
-    return true; // dégâts appliqués
+    return applyDamageImpl(this, sourceX, amount);
   }
 
   isShieldHeld() {
