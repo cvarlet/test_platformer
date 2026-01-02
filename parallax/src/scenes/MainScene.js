@@ -6,6 +6,7 @@ import { loadProgress, saveProgress, clearProgress } from "./main/progress";
 import { createHud, renderHearts, setScoreText, setBestText } from "./main/ui";
 import { initCamera, updateCameraLookAhead } from "./main/camera";
 import { setupOverlaps } from "./main/overlaps";
+import { initInput } from "./main/input";
 
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 500;
@@ -110,13 +111,7 @@ export default class MainScene extends Phaser.Scene {
     this.level.addEnemyColliders();
 
     // ✅ Input (avant setupOverlaps, important)
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keyShield = this.input.keyboard.addKey(
-      Phaser.Input.Keyboard.KeyCodes.E
-    );
-    this.keyAttack = this.input.keyboard.addKey(
-      Phaser.Input.Keyboard.KeyCodes.J
-    );
+    initInput(this);
 
     // ✅ UI (avant renderHearts)
     const hud = createHud(this);
