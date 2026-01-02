@@ -285,6 +285,19 @@ export default class MainScene extends Phaser.Scene {
     this.parallax.update(camX);
     this.level.updateEnemies(this.playerSprite, delta);
 
+    if (Phaser.Input.Keyboard.JustDown(this.keyColor1)) {
+      this.playerCtl.setProjectileColor(0xff3b3b); // rouge
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keyColor2)) {
+      this.playerCtl.setProjectileColor(0x3b7bff); // bleu
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keyColor3)) {
+      this.playerCtl.setProjectileColor(0xb0b0b0); // gris
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keyColor4)) {
+      this.playerCtl.setProjectileColor(0x41d95a); // vert
+    }
+
     this.playerCtl.update(
       this.cursors,
       delta,

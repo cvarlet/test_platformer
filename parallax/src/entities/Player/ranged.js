@@ -12,7 +12,15 @@ export function updateRanged(player, delta, keyShoot) {
     const x = player.sprite.x + dir * 26;
     const y = player.sprite.y - 6;
 
-    const proj = scene.add.rectangle(x, y, 14, 10, 0xffffff, 0.95);
+    const proj = scene.add.rectangle(
+      x,
+      y,
+      14,
+      10,
+      player.projectileColor,
+      0.95
+    );
+
     scene.physics.add.existing(proj, false);
 
     scene.playerProjectiles.add(proj); // UNE SEULE FOIS

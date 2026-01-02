@@ -62,6 +62,7 @@ export default class Player {
     this.shootCooldown = 0;
     this.projectileSpeed = 420;
     this.projectileDamage = 1;
+    this.projectileColor = 0xff3b3b; // rouge
   }
 
   create(x, y) {
@@ -198,5 +199,9 @@ export default class Player {
 
   getAttackId() {
     return this.attackId;
+  }
+
+  setProjectileColor(hex) {
+    this.projectileColor = hex;
   }
 }
