@@ -4,6 +4,7 @@ import Player from "../entities/Player";
 import Level from "../level/Level";
 import { loadProgress, saveProgress, clearProgress } from "./main/progress";
 import { createHud, renderHearts, setScoreText, setBestText } from "./main/ui";
+import { initCamera, updateCameraLookAhead } from "./main/camera";
 
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 500;
@@ -21,10 +22,6 @@ export default class MainScene extends Phaser.Scene {
     this.scoreText = null;
 
     this.finished = false;
-
-    this.lookAheadX = 45; // combien la caméra regarde devant
-    this.lookAheadLerp = 0.008; // douceur du décalage (0.05–0.15)
-    this.lookAheadCurrent = 0; // interne
 
     this.levelKey = "level1";
   }
@@ -332,13 +329,7 @@ export default class MainScene extends Phaser.Scene {
     });
     attachDamageZones(playerSprite);
 
-    this.cameras.main.startFollow(playerSprite, true, 0.15, 0.15);
-
-    // Zone "morte" : le joueur peut bouger dans une zone avant que la caméra suive
-    this.cameras.main.setDeadzone(0, worldH);
-
-    // Optionnel : place le joueur un peu plus vers la gauche (pour voir plus devant)
-    this.cameras.main.setFollowOffset(-0, 0);
+    initCamera(this, playerSprite, worldW, worldH);
 
     // Input
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -538,16 +529,6 @@ export default class MainScene extends Phaser.Scene {
       this.keyAttack
     );
 
-    // Look-ahead caméra (regarde devant le joueur)
-    const vx = this.playerCtl.sprite.body.velocity.x;
-    const dir = vx > 10 ? 1 : vx < -10 ? -1 : 0;
-    const target = dir * this.lookAheadX;
-
-    // interpolation douce vers la cible
-    this.lookAheadCurrent +=
-      (target - this.lookAheadCurrent) * this.lookAheadLerp;
-
-    // applique le décalage
-    this.cameras.main.setFollowOffset(-120, 0);
+    updateCameraLookAhead(this, this.playerCtl);
   }
 }
