@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { updateCombat } from "./Player/combat";
+import { updateMovement } from "./Player/movement";
 
 export default class Player {
   constructor(scene) {
@@ -144,70 +145,15 @@ export default class Player {
       return;
     }
 
-    const accel = 1100;
-
-    // ----------------------------
-    // Déplacement horizontal + facing
-    // ----------------------------
-    if (input.left.isDown) {
-      this.facingDir = -1;
-      this.sprite.setAccelerationX(-accel);
-      this.sprite.setFlipX(true);
-    } else if (input.right.isDown) {
-      this.facingDir = 1;
-      this.sprite.setAccelerationX(accel);
-      this.sprite.setFlipX(false);
-    } else {
-      this.sprite.setAccelerationX(0);
-    }
-
-    const onGroundNow = this.onGround;
-
-    // coyote
-    if (onGroundNow) this.coyoteTimer = this.coyoteTimeMs;
-    else this.coyoteTimer = Math.max(0, this.coyoteTimer - delta);
-
-    // jump
-    const canJump = onGroundNow || this.coyoteTimer > 0;
-    if (Phaser.Input.Keyboard.JustDown(input.space) && canJump) {
-      this.sprite.setVelocityY(this.jumpVelocity);
-      this.coyoteTimer = 0;
-    }
-
-    // jump cut
-    if (
-      Phaser.Input.Keyboard.JustUp(input.space) &&
-      this.sprite.body.velocity.y < 0
-    ) {
-      this.sprite.setVelocityY(
-        this.sprite.body.velocity.y * this.jumpCutMultiplier
-      );
-    }
-
-    // landing dust
-    if (!this.wasOnGround && onGroundNow) this.spawnDust();
-    this.wasOnGround = onGroundNow;
-
     // ----------------------------
     // combat
     // ----------------------------
     updateCombat(this, delta, keyShield, keyAttack);
 
     // ----------------------------
-    // Anim
+    // Movement
     // ----------------------------
-    if (!onGroundNow) {
-      this.sprite.anims.stop();
-      if (this.sprite.body.velocity.y < 0) this.sprite.setFrame(0);
-      else this.sprite.setFrame(2);
-    } else {
-      const moving = Math.abs(this.sprite.body.velocity.x) > 10;
-      if (moving) this.sprite.anims.play("walk", true);
-      else {
-        this.sprite.anims.stop();
-        this.sprite.setFrame(1);
-      }
-    }
+    updateMovement(this, input, delta);
   }
 
   freeze() {
