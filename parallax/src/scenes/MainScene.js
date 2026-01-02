@@ -2,24 +2,10 @@ import Phaser from "phaser";
 import Parallax from "../systems/Parallax";
 import Player from "../entities/Player";
 import Level from "../level/Level";
+import { loadProgress, saveProgress, clearProgress } from "./main/progress";
 
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 500;
-
-const STORAGE_KEY = "miniPlatformerProgress_v1";
-
-function loadProgress() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveProgress(progress) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-}
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -72,7 +58,7 @@ export default class MainScene extends Phaser.Scene {
 
   create() {
     // TEST
-    localStorage.removeItem("miniPlatformerProgress_v1");
+    clearProgress();
 
     // --- Progression sauvegardée ---
     const progress = loadProgress();
