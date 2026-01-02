@@ -165,7 +165,10 @@ export default class Player {
   }
 
   applyDamage(sourceX, amount = 1) {
+<<<<<<< HEAD
     console.log("damage amount : ", amount);
+=======
+>>>>>>> e4b5a4b2018f87ad03dc2b2e55e9e898e7730c3f
     return applyDamageImpl(this, sourceX, amount);
   }
 
