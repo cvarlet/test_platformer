@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { updateCombat } from "./Player/combat";
 
 export default class Player {
   constructor(scene) {
@@ -146,79 +147,6 @@ export default class Player {
     const accel = 1100;
 
     // ----------------------------
-    // Cooldowns
-    // ----------------------------
-    this.shieldCooldown = Math.max(0, this.shieldCooldown - delta);
-    this.attackCooldown = Math.max(0, this.attackCooldown - delta);
-
-    // ----------------------------
-    // Bouclier / Parry
-    // ----------------------------
-    this.shieldHeld = !!keyShield?.isDown;
-
-    if (keyShield && Phaser.Input.Keyboard.JustDown(keyShield)) {
-      console.log("SHIELD!");
-
-      if (this.shieldCooldown <= 0) {
-        this.parryActive = true;
-        this.parryTimer = this.parryWindowMs;
-        this.perfectParryTimer = this.perfectParryMs;
-        this.shieldCooldown = this.shieldCooldownMs;
-
-        if (this.shieldFx) {
-          this.shieldFx.setVisible(true);
-          this.shieldFx.setScale(1);
-          this.scene.tweens.add({
-            targets: this.shieldFx,
-            scale: 1.25,
-            duration: 70,
-            yoyo: true,
-          });
-        }
-      }
-    }
-
-    if (this.parryActive) {
-      this.parryTimer -= delta;
-      this.perfectParryTimer = Math.max(0, this.perfectParryTimer - delta);
-
-      if (this.parryTimer <= 0) {
-        this.parryActive = false;
-        this.perfectParryTimer = 0;
-      }
-    }
-
-    // ----------------------------
-    // Attaque épée (J)
-    // ----------------------------
-    if (keyAttack && Phaser.Input.Keyboard.JustDown(keyAttack)) {
-      console.log("ATTACK!");
-
-      if (this.attackCooldown <= 0 && !this.attackActive) {
-        this.attackActive = true;
-        this.attackTimer = this.attackActiveMs;
-        this.attackCooldown = this.attackCooldownMs;
-        this.attackId += 1;
-
-        if (this.swordFx) {
-          this.swordFx.setAlpha(0.6);
-          this.swordFx.setScale(1);
-          this.scene.tweens.add({
-            targets: this.swordFx,
-            alpha: 0,
-            scale: 1.35,
-            duration: 120,
-          });
-        }
-      }
-    }
-
-    if (this.attackActive) {
-      this.attackTimer -= delta;
-      if (this.attackTimer <= 0) this.attackActive = false;
-    }
-
-    // ----------------------------
     // Déplacement horizontal + facing
     // ----------------------------
     if (input.left.isDown) {
@@ -261,42 +189,9 @@ export default class Player {
     this.wasOnGround = onGroundNow;
 
     // ----------------------------
-    // Visuel bouclier
+    // combat
     // ----------------------------
-    if (this.shieldFx && this.sprite) {
-      const sx = this.sprite.x + this.facingDir * 26;
-      const sy = this.sprite.y - 6;
-
-      this.shieldFx.x = sx;
-      this.shieldFx.y = sy;
-
-      const visible = this.shieldHeld || this.parryActive;
-      this.shieldFx.setVisible(visible);
-
-      if (this.isPerfectParryActive()) this.shieldFx.fillAlpha = 0.75;
-      else this.shieldFx.fillAlpha = this.parryActive ? 0.45 : 0.22;
-    }
-
-    if (this.swordHitbox && this.sprite) {
-      const dir = this.facingDir;
-
-      const hx = this.sprite.x + dir * 34;
-      const hy = this.sprite.y - 6;
-
-      this.swordHitbox.setPosition(hx, hy);
-
-      const hb = this.swordHitbox.body;
-      if (hb) {
-        hb.enable = this.attackActive;
-        hb.updateFromGameObject();
-      }
-
-      // debug
-      if (this.swordDebug) {
-        this.swordDebug.setPosition(hx, hy);
-        this.swordDebug.setVisible(this.attackActive);
-      }
-    }
+    updateCombat(this, delta, keyShield, keyAttack);
 
     // ----------------------------
     // Anim
