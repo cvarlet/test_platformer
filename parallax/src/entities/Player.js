@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { updateCombat } from "./Player/combat";
 import { updateMovement } from "./Player/movement";
 import { applyDamage as applyDamageImpl } from "./Player/health";
+import { updateRanged } from "./Player/ranged";
 
 export default class Player {
   constructor(scene) {
@@ -53,6 +54,14 @@ export default class Player {
 
     this.swordHitbox = null; // hitbox physique
     this.swordFx = null; // visuel simple
+
+    // ----------------------------
+    // Tir (projectiles joueur)
+    // ----------------------------
+    this.shootCooldownMs = 350;
+    this.shootCooldown = 0;
+    this.projectileSpeed = 420;
+    this.projectileDamage = 1;
   }
 
   create(x, y) {
@@ -102,8 +111,6 @@ export default class Player {
     this.swordDebug.setDepth(999);
     this.swordDebug.setVisible(false);
 
-    this.scene.physics.add.existing(this.swordHitbox, false);
-
     this.swordHitbox.body.setAllowGravity(false);
     this.swordHitbox.body.immovable = true;
     this.swordHitbox.body.enable = false;
@@ -138,7 +145,7 @@ export default class Player {
     });
   }
 
-  update(input, delta, finished, keyShield, keyAttack) {
+  update(input, delta, finished, keyShield, keyAttack, keyShoot) {
     if (finished) return;
 
     if (this.hitStunTimer > 0) {
@@ -150,6 +157,7 @@ export default class Player {
     // combat
     // ----------------------------
     updateCombat(this, delta, keyShield, keyAttack);
+    updateRanged(this, delta, keyShoot);
 
     // ----------------------------
     // Movement
@@ -165,10 +173,6 @@ export default class Player {
   }
 
   applyDamage(sourceX, amount = 1) {
-<<<<<<< HEAD
-    console.log("damage amount : ", amount);
-=======
->>>>>>> e4b5a4b2018f87ad03dc2b2e55e9e898e7730c3f
     return applyDamageImpl(this, sourceX, amount);
   }
 

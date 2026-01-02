@@ -103,17 +103,23 @@ export default class MainScene extends Phaser.Scene {
     const playerSprite = this.playerCtl.create(startX, startY);
     this.playerSprite = playerSprite;
 
-    // ✅ Colliders solides d'abord (sol/plateformes)
+    // Colliders solides d'abord (sol/plateformes)
     this.level.addPlayerColliders(playerSprite);
 
     // Enemies
     this.level.createEnemies();
     this.level.addEnemyColliders();
 
-    // ✅ Input (avant setupOverlaps, important)
+    // Projectiles du joueur
+    this.playerProjectiles = this.physics.add.group({
+      allowGravity: false,
+      immovable: true,
+    });
+
+    // Input (avant setupOverlaps)
     initInput(this);
 
-    // ✅ UI (avant renderHearts)
+    // UI (avant renderHearts)
     const hud = createHud(this);
     this.scoreText = hud.scoreText;
     this.bestText = hud.bestText;
@@ -133,7 +139,7 @@ export default class MainScene extends Phaser.Scene {
       });
     };
 
-    // ✅ Tous les overlaps au même endroit
+    // Tous les overlaps au même endroit
     setupOverlaps(this, playerSprite);
 
     // Caméra
@@ -284,7 +290,8 @@ export default class MainScene extends Phaser.Scene {
       delta,
       this.finished,
       this.keyShield,
-      this.keyAttack
+      this.keyAttack,
+      this.keyShoot
     );
 
     updateCameraLookAhead(this, this.playerCtl);

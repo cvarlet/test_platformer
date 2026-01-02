@@ -1,4 +1,3 @@
-// src/entities/Player/movement.js
 import Phaser from "phaser";
 
 export function updateMovement(player, input, delta) {

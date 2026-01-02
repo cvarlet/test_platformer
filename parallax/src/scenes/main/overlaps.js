@@ -50,12 +50,21 @@ export function setupOverlaps(scene, playerSprite) {
     if (scene.finished) return;
 
     const enemy = hb._owner;
-    const dmg = enemy?._damage ?? 1;
+    if (!enemy) return;
 
-    // Parry actif : pas de dégâts => stun
+    // ✅ bloque tout spam (parry inclus)
+    if (enemy._didHitThisSwing) return;
+
+    const dmg = enemy._damage ?? 1;
+
     if (scene.playerCtl.isParryActive()) {
-      const perfect = scene.playerCtl.isPerfectParryActive();
+      enemy._didHitThisSwing = true;
 
+      // bonus : coupe la hitbox immédiatement
+      hb.body.enable = false;
+      hb.visible = false;
+
+      const perfect = scene.playerCtl.isPerfectParryActive();
       enemy._stunTimer = perfect ? 900 : 600;
       enemy._state = "stun";
       enemy.fillColor = perfect ? 0x7dffea : 0xb5ff7a;
@@ -68,14 +77,10 @@ export function setupOverlaps(scene, playerSprite) {
         setScoreText(scene, scene.score);
         scene.sound.play("sfxCoin", { volume: 0.25 });
       }
-
-      enemy._didHitThisSwing = true;
       return;
     }
 
-    if (enemy?._didHitThisSwing) return;
-
-    const didHit = scene.playerCtl.applyDamage(enemy?.x ?? hb.x, dmg);
+    const didHit = scene.playerCtl.applyDamage(enemy.x ?? hb.x, dmg);
     if (didHit) {
       enemy._didHitThisSwing = true;
       renderHearts(scene, scene.playerCtl);
@@ -154,6 +159,61 @@ export function setupOverlaps(scene, playerSprite) {
         scene.finished = true;
         scene.showGameOver();
       }
+    }
+
+    // --- Player projectiles (S) ---
+    const playerProjectiles = scene.playerProjectiles;
+
+    // sécurité si pas créé
+    if (playerProjectiles) {
+      // projectiles joueur -> sol
+      scene.physics.add.collider(
+        playerProjectiles,
+        scene.level.groundCollider,
+        (proj) => proj.destroy()
+      );
+
+      // projectiles joueur -> plateformes
+      scene.level.platforms.forEach(({ collider }) => {
+        scene.physics.add.collider(playerProjectiles, collider, (proj) =>
+          proj.destroy()
+        );
+      });
+
+      // projectiles joueur -> ennemis
+      scene.physics.add.overlap(
+        scene.level.enemies,
+        playerProjectiles,
+        (enemy, proj) => {
+          const dmg = proj._damage ?? 1;
+          proj.destroy();
+
+          enemy._hp = (enemy._hp ?? 1) - dmg;
+
+          // feedback léger
+          enemy.fillColor = 0xffffff;
+          scene.tweens.add({
+            targets: enemy,
+            alpha: 0.3,
+            duration: 60,
+            yoyo: true,
+            onComplete: () => (enemy.alpha = 1),
+          });
+
+          // mort ?
+          if (enemy._hp <= 0) {
+            if (enemy._hitbox) enemy._hitbox.destroy();
+            enemy.destroy();
+
+            scene.score += 1;
+            setScoreText(scene, scene.score);
+          } else {
+            // petit stun optionnel
+            enemy._stunTimer = 160;
+            enemy._state = "stun";
+          }
+        }
+      );
     }
   });
 

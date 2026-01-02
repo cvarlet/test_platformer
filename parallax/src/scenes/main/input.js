@@ -11,9 +11,14 @@ export function initInput(scene) {
     Phaser.Input.Keyboard.KeyCodes.J
   );
 
+  scene.keyShoot = scene.input.keyboard.addKey(
+    Phaser.Input.Keyboard.KeyCodes.S
+  );
+
   return {
     cursors: scene.cursors,
     keyShield: scene.keyShield,
     keyAttack: scene.keyAttack,
+    keyShoot: scene.keyShoot,
   };
 }
