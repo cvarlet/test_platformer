@@ -5,6 +5,7 @@ import Level from "../level/Level";
 import { loadProgress, saveProgress, clearProgress } from "./main/progress";
 import { createHud, renderHearts, setScoreText, setBestText } from "./main/ui";
 import { initCamera, updateCameraLookAhead } from "./main/camera";
+import { setupOverlaps } from "./main/overlaps";
 
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 500;
@@ -99,241 +100,17 @@ export default class MainScene extends Phaser.Scene {
     const startY = levelData?.playerStart?.y ?? 200;
 
     const playerSprite = this.playerCtl.create(startX, startY);
-    this.playerSprite = playerSprite; // ✅ important : maintenant il existe
+    this.playerSprite = playerSprite;
 
-    this.playerCtl.hp = this.playerCtl.maxHp;
-    renderHearts(this, this.playerCtl);
-
+    // ✅ Colliders solides d'abord (sol/plateformes)
     this.level.addPlayerColliders(playerSprite);
 
     // Enemies
-    const enemies = this.level.createEnemies();
+    this.level.createEnemies();
     this.level.addEnemyColliders();
 
-    // ✅ Overlap épée joueur -> ennemis
-    const swordHb = this.playerCtl.getSwordHitbox();
-
-    this.physics.add.overlap(swordHb, this.level.enemies, (hb, enemy) => {
-      if (this.finished) return;
-      if (!hb.body.enable) return; // sécurité
-
-      // ✅ 1 hit par swing
-      const swingId = this.playerCtl.getAttackId();
-      if (enemy._lastHitSwingId === swingId) return;
-      enemy._lastHitSwingId = swingId;
-
-      // dégâts épée
-      const dmg = 1;
-      enemy._hp = (enemy._hp ?? 1) - dmg;
-
-      // feedback visuel
-      enemy.fillAlpha = 1;
-      enemy.fillColor = 0xffffff;
-      this.tweens.add({
-        targets: enemy,
-        alpha: 0.3,
-        duration: 60,
-        yoyo: true,
-        onComplete: () => (enemy.alpha = 1),
-      });
-
-      // stun court
-      enemy._stunTimer = 220;
-      enemy._state = "stun";
-
-      // mort ?
-      if (enemy._hp <= 0) {
-        if (enemy._hitbox) enemy._hitbox.destroy();
-        enemy.destroy();
-
-        this.cameras.main.shake(70, 0.004);
-        this.score += 1;
-        setScoreText(this, this.score);
-      }
-    });
-
-    // ✅ Overlap HITBOXES (maintenant playerSprite existe)
-    const enemyHitboxes = this.level.getEnemyHitboxes();
-    this.physics.add.overlap(playerSprite, enemyHitboxes, (_, hb) => {
-      if (this.finished) return;
-
-      const enemy = hb._owner;
-      const dmg = enemy?._damage ?? 1;
-
-      // ✅ Si parry actif : pas de dégâts => stun ennemi
-      if (this.playerCtl.isParryActive()) {
-        const perfect = this.playerCtl.isPerfectParryActive();
-
-        // ✅ stun l'ennemi mêlée
-        enemy._stunTimer = perfect ? 900 : 600;
-        enemy._state = "stun";
-        enemy.fillColor = perfect ? 0x7dffea : 0xb5ff7a;
-
-        // feedback
-        if (perfect) {
-          this.hitStop(60, 0.08);
-          this.cameras.main.shake(80, 0.004);
-
-          this.score += 1;
-          setScoreText(this, this.score);
-          this.sound.play("sfxCoin", { volume: 0.25 });
-        }
-
-        // évite le double-hit de la même swing
-        enemy._didHitThisSwing = true;
-
-        return;
-      }
-
-      // (optionnel mais conseillé : 1 hit max par swing)
-      if (enemy?._didHitThisSwing) return;
-
-      const didHit = this.playerCtl.applyDamage(enemy?.x ?? hb.x, dmg);
-      if (didHit) {
-        enemy._didHitThisSwing = true;
-        renderHearts(this, this.playerCtl);
-
-        if (this.playerCtl.hp <= 0) {
-          this.finished = true;
-          this.showGameOver();
-        }
-      }
-    });
-
-    // ✅ Overlap PROJECTILES (ennemi tireur)
-    const enemyProjectiles = this.level.getEnemyProjectiles();
-
-    this.physics.add.overlap(playerSprite, enemyProjectiles, (_, proj) => {
-      if (this.finished) return;
-
-      // Si projectile déjà "joueur", on ignore (il ne doit pas re-toucher le héros)
-      if (proj._team === "player") return;
-
-      // Bouclier actif ?
-      if (this.playerCtl.isShieldHeld()) {
-        // Parry actif ? => on renvoie
-        if (this.playerCtl.isParryActive()) {
-          const perfect = this.playerCtl.isPerfectParryActive();
-
-          // Passe en team joueur
-          proj._team = "player";
-
-          // ✅ Par défaut (parry normal)
-          proj._damageMult = 1;
-          proj._perfect = false;
-
-          const dir = this.playerCtl.getFacingDir();
-
-          // ✅ perfect = plus rapide
-          const speed = perfect ? 520 : 380;
-          proj.body.setVelocityX(dir * speed);
-
-          // Petite poussée pour éviter de rester collé au joueur
-          proj.x += dir * 8;
-          proj.body.updateFromGameObject();
-
-          // ✅ Perfect parry => dégâts x2 + effet visuel
-          if (perfect) {
-            proj._damageMult = 2;
-            proj._perfect = true;
-
-            // marque visuelle simple (sans assets)
-            proj.setScale(1.35);
-            proj.fillAlpha = 1;
-
-            this.tweens.add({
-              targets: proj,
-              scale: 1.55,
-              duration: 80,
-              yoyo: true,
-            });
-
-            // feedback
-            this.hitStop(60, 0.08);
-            this.cameras.main.shake(80, 0.004);
-            this.sound.play("sfxCoin", { volume: 0.25 });
-
-            // bonus score (optionnel)
-            this.score += 1;
-            setScoreText(this, this.score);
-          }
-
-          return;
-        }
-
-        // Bouclier normal => on détruit le projectile, pas de dégâts
-        proj.destroy();
-        return;
-      }
-
-      // Sinon => dégâts normaux
-      proj.destroy();
-
-      const dmg = proj._damage ?? 1;
-      const didHit = this.playerCtl.applyDamage(proj.x, dmg);
-
-      if (didHit) {
-        renderHearts(this, this.playerCtl);
-        if (this.playerCtl.hp <= 0) {
-          this.finished = true;
-          this.showGameOver();
-        }
-      }
-    });
-
-    // ✅ Projectiles renvoyés -> ennemis
-    this.physics.add.overlap(
-      this.level.enemies,
-      enemyProjectiles,
-      (enemy, proj) => {
-        if (proj._team !== "player") return;
-
-        const base = proj._damage ?? 1;
-        const mult = proj._damageMult ?? 1;
-        const dmg = base * mult;
-
-        proj.destroy();
-
-        // ✅ dmg >= 2 => kill direct (perfect)
-        if (dmg >= 2) {
-          if (enemy._hitbox) enemy._hitbox.destroy();
-          enemy.destroy();
-
-          this.cameras.main.shake(90, 0.006);
-
-          this.score += 2;
-          setScoreText(this, this.score);
-          return;
-        }
-
-        // ✅ dmg 1 => stun
-        enemy._stunTimer = 600;
-        enemy._state = "stun";
-        enemy.fillColor = 0xb5ff7a; // vert clair "touché"
-      }
-    );
-
-    const attachDamageZones = this.level.createDamageZones((zone) => {
-      if (this.finished) return;
-
-      const didHit = this.playerCtl.applyDamage(zone.x, 1);
-      if (didHit) {
-        renderHearts(this, this.playerCtl);
-
-        // mort => game over simple
-        if (this.playerCtl.hp <= 0) {
-          this.finished = true;
-          this.showGameOver();
-        }
-      }
-    });
-    attachDamageZones(playerSprite);
-
-    initCamera(this, playerSprite, worldW, worldH);
-
-    // Input
+    // ✅ Input (avant setupOverlaps, important)
     this.cursors = this.input.keyboard.createCursorKeys();
-    // Bouclier / Parry
     this.keyShield = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.E
     );
@@ -341,45 +118,31 @@ export default class MainScene extends Phaser.Scene {
       Phaser.Input.Keyboard.KeyCodes.J
     );
 
-    // UI
+    // ✅ UI (avant renderHearts)
     const hud = createHud(this);
     this.scoreText = hud.scoreText;
     this.bestText = hud.bestText;
 
-    // Best initial
     const best = this.bestByLevel[this.levelKey] ?? 0;
     setBestText(this, best);
 
-    // Coins
-    const attachCoinOverlap = this.level.createCoins((coin) => {
-      if (this.finished) return;
+    // HP + Hearts
+    this.playerCtl.hp = this.playerCtl.maxHp;
+    renderHearts(this, this.playerCtl);
 
-      coin.destroy();
-      this.sound.play("sfxCoin", { volume: 0.5 });
+    // petite fonction utilitaire pour overlaps.js (best score)
+    this.saveProgress = () => {
+      saveProgress({
+        lastLevelKey: this.levelKey,
+        bestByLevel: this.bestByLevel,
+      });
+    };
 
-      this.score += 1;
-      this.scoreText.setText(`Score: ${this.score}`);
+    // ✅ Tous les overlaps au même endroit
+    setupOverlaps(this, playerSprite);
 
-      // ✅ BEST SCORE (au bon endroit)
-      const currentBest = this.bestByLevel[this.levelKey] ?? 0;
-      if (this.score > currentBest) {
-        this.bestByLevel[this.levelKey] = this.score;
-        this.bestText.setText(`Best: ${this.score}`);
-
-        saveProgress({
-          lastLevelKey: this.levelKey,
-          bestByLevel: this.bestByLevel,
-        });
-      }
-    });
-    attachCoinOverlap(playerSprite);
-
-    // Finish
-    const attachFinishOverlap = this.level.createFinish(() => {
-      if (this.finished) return;
-      this.finishLevel();
-    });
-    attachFinishOverlap(playerSprite);
+    // Caméra
+    initCamera(this, playerSprite, worldW, worldH);
   }
 
   finishLevel() {
