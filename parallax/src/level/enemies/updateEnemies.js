@@ -99,7 +99,7 @@ export function updateEnemies(level, playerSprite, delta) {
     const enableHitbox = () => {
       if (!enemy._hitbox) return;
       enemy._hitbox.body.enable = true;
-      enemy._hitbox.visible = false; // true si debug
+      enemy._hitbox.visible = true; // true si debug
     };
 
     const facePlayer = () => {

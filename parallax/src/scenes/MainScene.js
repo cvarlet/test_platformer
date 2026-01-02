@@ -25,7 +25,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.finished = false;
 
-    this.levelKey = "level1";
+    this.levelKey = "level2";
   }
 
   preload() {

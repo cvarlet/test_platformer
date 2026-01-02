@@ -92,36 +92,12 @@
             "chaseSpeed": 140,
             "attackRange": 62,
             "attackWindupMs": 160,
-            "attackActiveMs": 120,
+            "attackActiveMs": 1000,
             "attackCooldownMs": 700,
             "attackHitbox": {
                 "w": 44,
                 "h": 34,
-                "offsetX": 34,
-                "offsetY": 4
-            }
-        },
-        {
-            "type": "patrol",
-            "x": 1450,
-            "y": 410,
-            "w": 36,
-            "h": 46,
-            "minX": 1320,
-            "maxX": 1650,
-            "speed": 95,
-            "damage": 1,
-            "chaseRange": 320,
-            "giveUpRange": 420,
-            "chaseSpeed": 140,
-            "attackRange": 62,
-            "attackWindupMs": 160,
-            "attackActiveMs": 120,
-            "attackCooldownMs": 700,
-            "attackHitbox": {
-                "w": 44,
-                "h": 34,
-                "offsetX": 34,
+                "offsetX": 0,
                 "offsetY": 4
             }
         }

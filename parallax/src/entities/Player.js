@@ -72,7 +72,7 @@ export default class Player {
     const p = this.scene.physics.add.sprite(x, y, "player", 1);
     p.setCollideWorldBounds(true);
     p.setDragX(1400);
-    p.setMaxVelocity(260, 2000);
+    p.setMaxVelocity(360, 2000);
 
     // Effet bouclier (rectangle simple)
     this.shieldFx = this.scene.add.rectangle(p.x, p.y, 34, 34, 0x7ad7ff, 0.25);
@@ -165,6 +165,7 @@ export default class Player {
   }
 
   applyDamage(sourceX, amount = 1) {
+    console.log("damage amount : ", amount);
     return applyDamageImpl(this, sourceX, amount);
   }
 
