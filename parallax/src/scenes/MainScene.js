@@ -3,6 +3,7 @@ import Parallax from "../systems/Parallax";
 import Player from "../entities/Player";
 import Level from "../level/Level";
 import { loadProgress, saveProgress, clearProgress } from "./main/progress";
+import { createHud, renderHearts, setScoreText, setBestText } from "./main/ui";
 
 const WORLD_WIDTH = 6000;
 const WORLD_HEIGHT = 500;
@@ -104,7 +105,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerSprite = playerSprite; // ✅ important : maintenant il existe
 
     this.playerCtl.hp = this.playerCtl.maxHp;
-    this.renderHearts();
+    renderHearts(this, this.playerCtl);
 
     this.level.addPlayerColliders(playerSprite);
 
@@ -150,7 +151,7 @@ export default class MainScene extends Phaser.Scene {
 
         this.cameras.main.shake(70, 0.004);
         this.score += 1;
-        this.scoreText?.setText?.(`Score: ${this.score}`);
+        setScoreText(this, this.score);
       }
     });
 
@@ -177,7 +178,7 @@ export default class MainScene extends Phaser.Scene {
           this.cameras.main.shake(80, 0.004);
 
           this.score += 1;
-          this.scoreText?.setText?.(`Score: ${this.score}`);
+          setScoreText(this, this.score);
           this.sound.play("sfxCoin", { volume: 0.25 });
         }
 
@@ -193,7 +194,7 @@ export default class MainScene extends Phaser.Scene {
       const didHit = this.playerCtl.applyDamage(enemy?.x ?? hb.x, dmg);
       if (didHit) {
         enemy._didHitThisSwing = true;
-        this.renderHearts();
+        renderHearts(this, this.playerCtl);
 
         if (this.playerCtl.hp <= 0) {
           this.finished = true;
@@ -257,7 +258,7 @@ export default class MainScene extends Phaser.Scene {
 
             // bonus score (optionnel)
             this.score += 1;
-            this.scoreText?.setText?.(`Score: ${this.score}`);
+            setScoreText(this, this.score);
           }
 
           return;
@@ -275,7 +276,7 @@ export default class MainScene extends Phaser.Scene {
       const didHit = this.playerCtl.applyDamage(proj.x, dmg);
 
       if (didHit) {
-        this.renderHearts();
+        renderHearts(this, this.playerCtl);
         if (this.playerCtl.hp <= 0) {
           this.finished = true;
           this.showGameOver();
@@ -304,7 +305,7 @@ export default class MainScene extends Phaser.Scene {
           this.cameras.main.shake(90, 0.006);
 
           this.score += 2;
-          this.scoreText?.setText?.(`Score: ${this.score}`);
+          setScoreText(this, this.score);
           return;
         }
 
@@ -320,7 +321,7 @@ export default class MainScene extends Phaser.Scene {
 
       const didHit = this.playerCtl.applyDamage(zone.x, 1);
       if (didHit) {
-        this.renderHearts();
+        renderHearts(this, this.playerCtl);
 
         // mort => game over simple
         if (this.playerCtl.hp <= 0) {
@@ -350,31 +351,13 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // UI
-    this.scoreText = this.add
-      .text(20, 20, "Score: 0", {
-        fontFamily: "Arial",
-        fontSize: "22px",
-        color: "#ffffff",
-      })
-      .setScrollFactor(0);
+    const hud = createHud(this);
+    this.scoreText = hud.scoreText;
+    this.bestText = hud.bestText;
 
+    // Best initial
     const best = this.bestByLevel[this.levelKey] ?? 0;
-
-    this.bestText = this.add
-      .text(20, 76, `Best: ${best}`, {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#ffffff",
-      })
-      .setScrollFactor(0);
-
-    this.add
-      .text(20, 48, "← → bouger | SPACE sauter", {
-        fontFamily: "Arial",
-        fontSize: "18px",
-        color: "#ffffff",
-      })
-      .setScrollFactor(0);
+    setBestText(this, best);
 
     // Coins
     const attachCoinOverlap = this.level.createCoins((coin) => {
@@ -487,31 +470,6 @@ export default class MainScene extends Phaser.Scene {
 
     // (optionnel) garder une ref si tu veux les détruire
     this.endUI = [overlay, panel, title, info, btn];
-  }
-
-  renderHearts() {
-    // détruit l’ancien HUD si présent
-    if (this.heartsUI) this.heartsUI.forEach((h) => h.destroy());
-    this.heartsUI = [];
-
-    const hearts = Math.ceil(this.playerCtl.maxHp / 2);
-    const hp = this.playerCtl.hp;
-
-    const x0 = 20;
-    const y0 = 20;
-    const gap = 26;
-
-    for (let i = 0; i < hearts; i++) {
-      const heartHp = hp - i * 2; // 2,1,0...
-      const key =
-        heartHp >= 2 ? "heartFull" : heartHp === 1 ? "heartHalf" : "heartEmpty";
-
-      const img = this.add
-        .image(x0 + i * gap, y0, key)
-        .setOrigin(0, 0)
-        .setScrollFactor(0);
-      this.heartsUI.push(img);
-    }
   }
 
   isPerfectParryActive() {
